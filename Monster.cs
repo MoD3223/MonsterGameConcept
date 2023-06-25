@@ -9,6 +9,7 @@ namespace MonsterGameConcept
     public class Monster
     {
         public string Name { get; private set; }
+        public string Description { get; private set; }
         public uint Level { get; private set; }
         public uint Experience { get; private set; }
         public uint MaxExperience { get; private set; }
@@ -16,7 +17,7 @@ namespace MonsterGameConcept
         public uint MaxHealth { get; private set; }
         public MonsterType Type { get; private set; }
         public List<Move> Moves { get; private set; }
-        public StatusCondition Status { get; private set; }
+        public StatusCondition Status { get; set; }
         public Statistic BaseStats { get; private set; }
         public uint Attack { get; private set; }
         public uint Defense { get; private set; }
@@ -58,6 +59,7 @@ namespace MonsterGameConcept
             }
         }
 
+
         public void Heal(int amount)
         {
             if (Status != StatusCondition.Unconscious)
@@ -65,10 +67,6 @@ namespace MonsterGameConcept
                 Health += amount;
                 if (Health > MaxHealth)
                     Health = (int)MaxHealth;
-            }
-            else
-            {
-                //Do nothing
             }
         }
 
@@ -119,14 +117,30 @@ namespace MonsterGameConcept
                 //TODO: Make it so only 4 moves are avaible, if all slots are taken ask for replacement
                 Moves.Add(move);
             }
+            else if (move.RequiredType == Type)
+            {
+                //We have required type but not level
+            }
+            else
+            {
+                //We dont have required type!
+            }
         }
 
         public void UseMove(int moveIndex, Monster target)
         {
-            Move move = Moves[moveIndex];
+            Move move = this.Moves[moveIndex];
             int damage = CalculateDamage(move, target);
-            target.TakeDamage(damage);
-            ApplyMoveEffects(move, target);
+            if (move.Category == MoveCategory.Support)
+            {
+                ApplyMoveEffects(move);
+                this.Heal(move.Power * 10);
+            }
+            else
+            {
+                target.ApplyMoveEffects(move);
+                target.TakeDamage(damage);
+            }
             move.PP--;
         }
 
@@ -148,10 +162,13 @@ namespace MonsterGameConcept
             return 1.0;
         }
 
-        private void ApplyMoveEffects(Move move, Monster target)
+        private void ApplyMoveEffects(Move move)
         {
-            // Apply additional move effects, such as status conditions, stat changes, etc.
-            // Example: check move effects and modify target's properties accordingly
+            if (move.MoveStatus == StatusCondition.Empty)
+            {
+                return;
+            }
+            this.Status = move.MoveStatus;
         }
 
         private void CalculateStats()
@@ -197,6 +214,7 @@ namespace MonsterGameConcept
             }
         }
     }
+    //Koniec klasy
 
     public enum MonsterType
     {
@@ -204,6 +222,9 @@ namespace MonsterGameConcept
         Fire,
         Water,
         Grass,
+        Air,
+        Power,
+        Special
         // Additional types...
     }
 
@@ -212,7 +233,19 @@ namespace MonsterGameConcept
         Physical,
         Special,
         Status,
+        Support
         //Additional categories...
+    }
+
+    public enum MoveType
+    {
+        Normal,
+        Fire,
+        Water,
+        Grass,
+        Air,
+        Power,
+        Special
     }
 
     public enum StatusCondition
@@ -221,7 +254,8 @@ namespace MonsterGameConcept
         Normal,
         Poisoned,
         Paralyzed,
-        Dead
+        Dead,
+        Empty //Used only to not override status if new move doesn't have any
         // Additional status conditions...
     }
 
@@ -246,7 +280,7 @@ namespace MonsterGameConcept
             SpecialDefense = specialDefense;
         }
     }
-
+    //Statistic bulba = new Statistic(1, 2, 3, 4, 5, 6);
 
 
 
