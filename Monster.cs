@@ -15,7 +15,8 @@ namespace MonsterGameConcept
         public uint MaxExperience { get; private set; }
         public int Health { get; private set; }
         public uint MaxHealth { get; private set; }
-        public MonsterType Type { get; private set; }
+        public Type MonsterType { get; private set; }
+        public Rarity Rareness { get; private set; }
         public List<Move> Moves { get; private set; }
         public StatusCondition Status { get; set; }
         public Statistic BaseStats { get; private set; }
@@ -28,7 +29,7 @@ namespace MonsterGameConcept
         Random r = new Random();
         
 
-        public Monster(string name, uint level, uint maxHealth, uint maxExperience, MonsterType type, List<Move> moves, Statistic baseStats)
+        public Monster(string name, uint level, uint maxHealth, uint maxExperience, Type type,Rarity rareness, List<Move> moves, Statistic baseStats)
         {
             Name = name;
             Level = level;
@@ -36,12 +37,21 @@ namespace MonsterGameConcept
             Health = (int)MaxHealth;
             MaxExperience = maxExperience;
             Experience = 0;
-            Type = type;
+            MonsterType = type;
+            Rareness = rareness;
             Moves = moves;
             Status = StatusCondition.Normal;
             BaseStats = baseStats;
             CalculateStats();
         }
+
+        //List<Monster?> monsterParty = new List<Monster?>(4); 
+        //List<Monster?> monsterContainer = new List<Monster?>(100);
+
+
+        //TODO: Make it so rarity affects the monster
+
+
 
         public void TakeDamage(int damage)
         {
@@ -53,7 +63,6 @@ namespace MonsterGameConcept
                 {
                     Status = StatusCondition.Dead;
                     return;
-                    //TODO: Make it so dead are removed automatically :p
                 }
                 Status = StatusCondition.Unconscious;
             }
@@ -112,12 +121,12 @@ namespace MonsterGameConcept
                 return; // Move already known, cannot learn it again
             }
 
-            if (move.RequiredType == Type && move.RequiredLevel <= Level)
+            if (move.RequiredMonsterType == MonsterType && move.RequiredLevel <= Level)
             {
                 //TODO: Make it so only 4 moves are avaible, if all slots are taken ask for replacement
                 Moves.Add(move);
             }
-            else if (move.RequiredType == Type)
+            else if (move.RequiredMonsterType == MonsterType)
             {
                 //We have required type but not level
             }
@@ -149,17 +158,42 @@ namespace MonsterGameConcept
             uint level = Level;
             uint attackerStat = GetAttackStat(move.Category);
             uint defenderStat = target.GetDefenseStat(move.Category);
-            double modifier = CalculateModifier();
+            double modifier = CalculateModifier(move,target);
 
             int damage = (int)(((2 * level) * (double)(move.Power * attackerStat / (double)defenderStat)) * modifier);
             return damage;
         }
 
-        private double CalculateModifier()
+        private double CalculateModifier(Move move, Monster target)
         {
-            // Logic for calculating damage modifier based on move, type effectiveness, critical hits, etc.
-            // Example: return some formula based on chance of critical hit, random factors, etc.
-            return 1.0;
+            if (move.MoveType == Type.Fire && target.MonsterType == Type.Grass)
+    {
+        return 2.0;
+    }
+    else if (move.MoveType == Type.Water && target.MonsterType == Type.Fire)
+    {
+        return 2.0;
+    }
+    else if (move.MoveType == Type.Grass && target.MonsterType == Type.Water)
+    {
+        return 2.0;
+    }
+    else if ((move.MoveType == Type.Air && target.MonsterType == Type.Grass) || (move.MoveType == Type.Air && target.MonsterType == Type.Water))
+    {
+        return 1.5;
+    }
+    else if ((move.MoveType == Type.Power && target.MonsterType == Type.Normal) || (move.MoveType == Type.Power && target.MonsterType == Type.Grass))
+    {
+        return 1.5;
+    }
+    else if (move.MoveType == Type.Special && target.MonsterType == Type.Power)
+    {
+        return 2.0;
+    }
+    else
+    {
+        return 1.0; // Default effectiveness multiplier
+    }
         }
 
         private void ApplyMoveEffects(Move move)
@@ -173,11 +207,18 @@ namespace MonsterGameConcept
 
         private void CalculateStats()
         {
+            MaxHealth = (uint)Math.Max(BaseStats.HP + r.Next(-10, 10), 0);
             Attack = (uint)Math.Max(BaseStats.Attack + r.Next(-10, 10), 0);
             Defense = (uint)Math.Max(BaseStats.Defense + r.Next(-10, 10), 0);
             Speed = (uint)Math.Max(BaseStats.Speed+ r.Next(-10, 10), 0);
             SpecialAttack = (uint)Math.Max(BaseStats.SpecialAttack + r.Next(-10, 10), 0);
             SpecialDefense = (uint)Math.Max(BaseStats.SpecialDefense + r.Next(-10, 10),0);
+
+            for (int i = 0; i < this.Level; i++)
+            {
+                AddStats();
+            }
+
         }
 
         private void AddStats()
@@ -213,10 +254,27 @@ namespace MonsterGameConcept
                 return Defense;
             }
         }
+
+        public void SwapList(List<Monster?> list, int index1, int index2)
+        {
+            Monster? temp = list[index1];
+            list[index1] = list[index2];
+            list[index2] = temp;
+            PushNullsToBack(list);
+        }
+
+        public void PushNullsToBack(List<Monster?> list)
+        {
+            int nullCount = list.RemoveAll(item => item == null);
+            for (int i = 0; i < nullCount; i++)
+            {
+                list.Add(null);
+            }
+        }
     }
     //Koniec klasy
 
-    public enum MonsterType
+    public enum Type
     {
         Normal,
         Fire,
@@ -237,26 +295,27 @@ namespace MonsterGameConcept
         //Additional categories...
     }
 
-    public enum MoveType
-    {
-        Normal,
-        Fire,
-        Water,
-        Grass,
-        Air,
-        Power,
-        Special
-    }
-
     public enum StatusCondition
     {
         Unconscious,
         Normal,
-        Poisoned,
-        Paralyzed,
+        Poison,
+        Paralyze,
+        Sleep,
+        Binding,
         Dead,
         Empty //Used only to not override status if new move doesn't have any
         // Additional status conditions...
+    }
+
+    public enum Rarity
+    {
+        Normal,
+        Rare,
+        Very_rare,
+        Ultra_Rare,
+        Special,
+        Legendary
     }
 
 
