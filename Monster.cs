@@ -8,14 +8,12 @@ namespace MonsterGameConcept
 {
     public class Monster
     {
-        public string Name { get; private set; }
-        public string Description { get; private set; }
+        public string? UniqueName { get; private set; }
         public uint Level { get; private set; }
         public uint Experience { get; private set; }
         public uint MaxExperience { get; private set; }
         public int Health { get; private set; }
         public uint MaxHealth { get; private set; }
-        public Type MonsterType { get; private set; }
         public Rarity Rareness { get; private set; }
         public List<Move> Moves { get; private set; }
         public StatusCondition Status { get; set; }
@@ -25,41 +23,40 @@ namespace MonsterGameConcept
         public uint Speed { get; private set; }
         public uint SpecialAttack { get; private set; }
         public uint SpecialDefense { get; private set; }
+        public uint EvolutionLevel { get; private set; }
 
         Random r = new Random();
         
 
-        public Monster(string name, uint level, uint maxHealth, uint maxExperience, Type type,Rarity rareness, List<Move> moves, Statistic baseStats)
+        public Monster(string? name, uint level,Rarity rareness, List<Move> moves, Statistic baseStats, uint evolutionLevel)
         {
-            Name = name;
+            UniqueName = name;
             Level = level;
-            MaxHealth = maxHealth;
-            Health = (int)MaxHealth;
-            MaxExperience = maxExperience;
             Experience = 0;
-            MonsterType = type;
             Rareness = rareness;
             Moves = moves;
             Status = StatusCondition.Normal;
             BaseStats = baseStats;
+            EvolutionLevel = evolutionLevel;
             CalculateStats();
+            Health = (int)MaxHealth;
         }
+        //TODO: put this in some player class, idk
+        public static List<Monster?> monsterParty = new List<Monster?>(4); 
+        public static List<Monster?> monsterContainer = new List<Monster?>(100);
 
-        //List<Monster?> monsterParty = new List<Monster?>(4); 
-        //List<Monster?> monsterContainer = new List<Monster?>(100);
 
-
-        //TODO: Make it so rarity affects the monster
+        //TODO: Make it so rarity affects the monster in more ways
 
 
 
         public void TakeDamage(int damage)
         {
             Health -= damage;
-            if (Health < 0)
+            if (Health <= 0)
             {
                 Health = 0;
-                if (r.Next(100) == 1)
+                if (r.Next(10) == 1)
                 {
                     Status = StatusCondition.Dead;
                     return;
@@ -98,6 +95,10 @@ namespace MonsterGameConcept
             MaxExperience = CalculateNextLevelExperience();
             AddStats();
             Health = (int)MaxHealth;
+            if (this.BaseStats.EvolutionLevel == this.Level)
+            {
+                Evolve(this);
+            }
         }
 
         private uint CalculateNextLevelExperience()
@@ -121,23 +122,19 @@ namespace MonsterGameConcept
                 return; // Move already known, cannot learn it again
             }
 
-            if (move.RequiredMonsterType == MonsterType && move.RequiredLevel <= Level)
+            if (move.RequiredLevel <= Level)
             {
-                //TODO: Make it so only 4 moves are avaible, if all slots are taken ask for replacement
                 Moves.Add(move);
-            }
-            else if (move.RequiredMonsterType == MonsterType)
-            {
-                //We have required type but not level
             }
             else
             {
-                //We dont have required type!
+                //We dont have required level!
             }
         }
 
         public void UseMove(int moveIndex, Monster target)
         {
+            //Maybe require move instead of moveIndex?
             Move move = this.Moves[moveIndex];
             int damage = CalculateDamage(move, target);
             if (move.Category == MoveCategory.Support)
@@ -161,40 +158,57 @@ namespace MonsterGameConcept
             double modifier = CalculateModifier(move,target);
 
             int damage = (int)(((2 * level) * (double)(move.Power * attackerStat / (double)defenderStat)) * modifier);
+            if (move.MoveType == target.BaseStats.MonsterType)
+            {
+                damage *= 2;
+            }
             return damage;
         }
 
         private double CalculateModifier(Move move, Monster target)
         {
-            if (move.MoveType == Type.Fire && target.MonsterType == Type.Grass)
-    {
-        return 2.0;
-    }
-    else if (move.MoveType == Type.Water && target.MonsterType == Type.Fire)
-    {
-        return 2.0;
-    }
-    else if (move.MoveType == Type.Grass && target.MonsterType == Type.Water)
-    {
-        return 2.0;
-    }
-    else if ((move.MoveType == Type.Air && target.MonsterType == Type.Grass) || (move.MoveType == Type.Air && target.MonsterType == Type.Water))
-    {
-        return 1.5;
-    }
-    else if ((move.MoveType == Type.Power && target.MonsterType == Type.Normal) || (move.MoveType == Type.Power && target.MonsterType == Type.Grass))
-    {
-        return 1.5;
-    }
-    else if (move.MoveType == Type.Special && target.MonsterType == Type.Power)
-    {
-        return 2.0;
-    }
-    else
-    {
-        return 1.0; // Default effectiveness multiplier
-    }
+            if (move.MoveType == Type.Fire && target.BaseStats.MonsterType == Type.Grass)
+            {
+                return 2.0;
+            }
+            else if (move.MoveType == Type.Water && target.BaseStats.MonsterType == Type.Fire)
+            {
+                return 2.0;
+            }
+            else if (move.MoveType == Type.Grass && target.BaseStats.MonsterType == Type.Water)
+            {
+                return 2.0;
+            }
+            else if ((move.MoveType == Type.Air && target.BaseStats.MonsterType == Type.Grass) || (move.MoveType == Type.Air && target.BaseStats.MonsterType == Type.Water))
+            {
+                return 1.5;
+            }
+            else if ((move.MoveType == Type.Power && target.BaseStats.MonsterType == Type.Normal) || (move.MoveType == Type.Power && target.BaseStats.MonsterType == Type.Grass))
+            {
+                return 1.5;
+            }
+            else if (move.MoveType == Type.Special && target.BaseStats.MonsterType == Type.Power)
+            {
+                return 2.0;
+            }
+            else if (move.MoveType == Type.Dark && target.BaseStats.MonsterType == Type.Special)
+            {
+                return 2.0;
+            }
+            else if (move.MoveType == Type.Rock && target.BaseStats.MonsterType == Type.Fairy)
+            {
+                return 2.0;
+            }
+            else if (move.MoveType == Type.Cosmic && target.BaseStats.MonsterType == Type.Dark)
+            {
+                return 2.0;
+            }
+            else
+            {
+                return 1.0; // Default effectiveness multiplier
+            }
         }
+
 
         private void ApplyMoveEffects(Move move)
         {
@@ -223,12 +237,12 @@ namespace MonsterGameConcept
 
         private void AddStats()
         {
-            MaxHealth += (uint)r.Next(10);
-            Attack += (uint)r.Next(5);
-            Defense += (uint)r.Next(5);
-            Speed += (uint)r.Next(5);
-            SpecialAttack += (uint)r.Next(5);
-            SpecialDefense += (uint)r.Next(5);
+            MaxHealth += (uint)(r.Next(5) * (int)this.Rareness);
+            Attack += (uint)(r.Next(5) * (int)this.Rareness);
+            Defense += (uint)(r.Next(5) * (int)this.Rareness);
+            Speed += (uint)(r.Next(5) * (int)this.Rareness);
+            SpecialAttack += (uint)(r.Next(5) * (int)this.Rareness);
+            SpecialDefense += (uint)(r.Next(5) * (int)this.Rareness);
         }
 
         private uint GetAttackStat(MoveCategory category)
@@ -255,6 +269,22 @@ namespace MonsterGameConcept
             }
         }
 
+        public static Monster GetFirstNotNull<Monster>(List<Monster> items)
+        {
+            foreach (var item in items)
+            {
+                if (item != null)
+                {
+                    return item;
+                }
+            }
+
+            throw new Exception("No not null items found!");
+        }
+
+
+
+
         public void SwapList(List<Monster?> list, int index1, int index2)
         {
             Monster? temp = list[index1];
@@ -271,6 +301,33 @@ namespace MonsterGameConcept
                 list.Add(null);
             }
         }
+
+        public void Evolve(Monster mon)
+        {
+            uint MaxHealth = mon.MaxHealth - mon.BaseStats.HP;
+            uint Attack = mon.Attack - mon.BaseStats.Attack;
+            uint Defense = mon.Defense - mon.BaseStats.Defense;
+            uint Speed = mon.Speed - mon.BaseStats.Speed;
+            uint SpecialAttack = mon.SpecialAttack - mon.BaseStats.SpecialAttack;
+            uint SpecialDefense = mon.SpecialDefense - mon.BaseStats.SpecialDefense;
+
+            int index = monsterParty.IndexOf(mon);
+            //TODO: Add calculating evolution level and fix this
+            monsterParty[index] = new Monster(mon.UniqueName, mon.Level, (Rarity)((int)mon.Rareness + 1), mon.Moves,mon.BaseStats.Evolution,mon.BaseStats.EvolutionLevel);
+            monsterParty[index].MaxHealth += MaxHealth;
+            monsterParty[index].Attack += Attack;
+            monsterParty[index].Defense += Defense;
+            monsterParty[index].Speed += Speed;
+            monsterParty[index].SpecialAttack += SpecialAttack;
+            monsterParty[index].SpecialDefense += SpecialDefense;
+        }
+
+        public void ChangeName(Monster mon, string newName)
+        {
+            mon.UniqueName = newName;   
+        }
+
+
     }
     //Koniec klasy
 
@@ -282,7 +339,11 @@ namespace MonsterGameConcept
         Grass,
         Air,
         Power,
-        Special
+        Special,
+        Dark,
+        Rock,
+        Fairy,
+        Cosmic
         // Additional types...
     }
 
@@ -310,6 +371,7 @@ namespace MonsterGameConcept
 
     public enum Rarity
     {
+        None, //Just for syntax purposes so actual rarities start from 1 :p
         Normal,
         Rare,
         Very_rare,
@@ -322,24 +384,33 @@ namespace MonsterGameConcept
     //Basic stats
     public class Statistic
     {
+        public string Name { get; private set; }
+        public string Description { get; private set; }
+        public Type MonsterType { get; private set; }
         public uint HP { get; private set; }
         public uint Attack { get; private set; }
         public uint Defense { get; private set; }
         public uint Speed { get; private set; }
         public uint SpecialAttack { get; private set; }
         public uint SpecialDefense { get; private set; }
+        public Statistic? Evolution { get; private set; }
+        public uint? EvolutionLevel { get; private set; }
 
-        public Statistic(uint hp, uint attack, uint defense, uint speed, uint specialAttack, uint specialDefense)
+        public Statistic(string name,string description,Type type,uint hp, uint attack, uint defense, uint speed, uint specialAttack, uint specialDefense,Statistic? evolution,uint? evolutionLevel)
         {
+            Name = name;
+            Description = description;
+            MonsterType = type;
             HP = hp;
             Attack = attack;
             Defense = defense;
             Speed = speed;
             SpecialAttack = specialAttack;
             SpecialDefense = specialDefense;
+            Evolution = evolution;
+            EvolutionLevel = evolutionLevel;
         }
     }
-    //Statistic bulba = new Statistic(1, 2, 3, 4, 5, 6);
 
 
 
