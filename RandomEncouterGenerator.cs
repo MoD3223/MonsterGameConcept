@@ -9,7 +9,7 @@ namespace MonsterGameConcept
 {
     public class RandomEncounterGenerator
     {
-        private List<Statistic> allAvaibleMonsters;
+        public static List<Statistic> allAvaibleMonsters;
         public static List<Move> allAvailableMoves;
 
         public RandomEncounterGenerator()
@@ -81,16 +81,19 @@ namespace MonsterGameConcept
 
         public Monster GenerateRandomEncounter()
         {
-
+            //TODO: add random rarity
             Random r = new Random();
-            Monster randomMonster = new Monster(null, AvgPartyLevel(r.Next(-5,5)), (Rarity)1, PopulateMoves(5), allAvaibleMonsters[r.Next(allAvaibleMonsters.Count)], null);
+            Statistic based = allAvaibleMonsters[r.Next(allAvaibleMonsters.Count)];
+            Monster randomMonster = new Monster(null, AvgPartyLevel(r.Next(-5,5)), (Rarity)1, PopulateMoves(5), based, based.EvolutionLevel);
             return randomMonster;
         }
 
         public Monster GenerateRandomEncounter(Type type)
         {
+            //Can spawn monster with level higher than its evolution level. If that happens it will evolve at next levelup;
             Random r = new Random();
-            Monster randomMonster = new Monster(null, AvgPartyLevel(r.Next(-5, 5)), (Rarity)1, PopulateMoves(5), ReturnSpecifiedMonsters(type)[r.Next(ReturnSpecifiedMonsters(type).Count)]);
+            Statistic based = ReturnSpecifiedMonsters(type)[r.Next(ReturnSpecifiedMonsters(type).Count)];
+            Monster randomMonster = new Monster(null, AvgPartyLevel(r.Next(-5, 5)), (Rarity)1, PopulateMoves(5), based,based.EvolutionLevel);
             return randomMonster;
         }
 
@@ -117,11 +120,19 @@ namespace MonsterGameConcept
         public uint AvgPartyLevel(int a)
         {
             uint sum = 0;
+            int notnulls = Monster.monsterParty.Count(xd => xd != null);
             for (int i = 0; i < 4; i++)
             {
-                sum += Monster.monsterParty[i].Level;
+                if (Monster.monsterParty[1].Level == null)
+                {
+                    //Do nothing
+                }
+                else
+                {
+                    sum += Monster.monsterParty[i].Level;
+                }
             }
-            return sum + (uint)a;
+            return (uint)((sum/notnulls) + a);
         }
 
         public List<Statistic> ReturnSpecifiedMonsters(Type type)

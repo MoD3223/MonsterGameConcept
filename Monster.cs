@@ -23,12 +23,12 @@ namespace MonsterGameConcept
         public uint Speed { get; private set; }
         public uint SpecialAttack { get; private set; }
         public uint SpecialDefense { get; private set; }
-        public uint EvolutionLevel { get; private set; }
+        public uint? EvolutionLevel { get; private set; }
 
         Random r = new Random();
         
 
-        public Monster(string? name, uint level,Rarity rareness, List<Move> moves, Statistic baseStats, uint evolutionLevel)
+        public Monster(string? name, uint level,Rarity rareness, List<Move> moves, Statistic baseStats, uint? evolutionLevel)
         {
             UniqueName = name;
             Level = level;
@@ -43,7 +43,7 @@ namespace MonsterGameConcept
         }
         //TODO: put this in some player class, idk
         public static List<Monster?> monsterParty = new List<Monster?>(4); 
-        public static List<Monster?> monsterContainer = new List<Monster?>(100);
+        public static List<Monster> monsterContainer = new List<Monster>();
 
 
         //TODO: Make it so rarity affects the monster in more ways
@@ -95,7 +95,7 @@ namespace MonsterGameConcept
             MaxExperience = CalculateNextLevelExperience();
             AddStats();
             Health = (int)MaxHealth;
-            if (this.BaseStats.EvolutionLevel == this.Level)
+            if (this.BaseStats.EvolutionLevel <= this.Level)
             {
                 Evolve(this);
             }
@@ -106,7 +106,7 @@ namespace MonsterGameConcept
             return Level * 100;
         }
 
-        private void LearnMovesByLevel()
+        public void LearnMovesByLevel()
         {
             if (Level % 10 == 0)
             {
@@ -219,7 +219,7 @@ namespace MonsterGameConcept
             this.Status = move.MoveStatus;
         }
 
-        private void CalculateStats()
+        public void CalculateStats()
         {
             MaxHealth = (uint)Math.Max(BaseStats.HP + r.Next(-10, 10), 0);
             Attack = (uint)Math.Max(BaseStats.Attack + r.Next(-10, 10), 0);
@@ -268,8 +268,7 @@ namespace MonsterGameConcept
                 return Defense;
             }
         }
-
-        public static Monster GetFirstNotNull<Monster>(List<Monster> items)
+        public static Monster? GetFirstNotNull(List<Monster> items)
         {
             foreach (var item in items)
             {
@@ -279,10 +278,8 @@ namespace MonsterGameConcept
                 }
             }
 
-            throw new Exception("No not null items found!");
+            return null;
         }
-
-
 
 
         public void SwapList(List<Monster?> list, int index1, int index2)
@@ -313,7 +310,7 @@ namespace MonsterGameConcept
 
             int index = monsterParty.IndexOf(mon);
             //TODO: Add calculating evolution level and fix this
-            monsterParty[index] = new Monster(mon.UniqueName, mon.Level, (Rarity)((int)mon.Rareness + 1), mon.Moves,mon.BaseStats.Evolution,mon.BaseStats.EvolutionLevel);
+            monsterParty[index] = new Monster(mon.UniqueName, mon.Level, (Rarity)((int)mon.Rareness + 1), mon.Moves,mon.BaseStats.Evolution,mon.BaseStats.Evolution.EvolutionLevel);
             monsterParty[index].MaxHealth += MaxHealth;
             monsterParty[index].Attack += Attack;
             monsterParty[index].Defense += Defense;
@@ -326,7 +323,19 @@ namespace MonsterGameConcept
         {
             mon.UniqueName = newName;   
         }
+        //Ref?
+        public uint CatchChance(ref Monster mon, ref Item item)
+        {
+            uint ret = 0;
+            if (mon.Status != StatusCondition.Normal)
+            {
+                ret += 10;
+            }
 
+            ret += (uint)(50 - ((mon.Health / mon.MaxHealth) * 100) + item.CatchChance);
+            //inv.removeitem??
+            return ret;
+        }
 
     }
     //Koniec klasy
@@ -395,8 +404,9 @@ namespace MonsterGameConcept
         public uint SpecialDefense { get; private set; }
         public Statistic? Evolution { get; private set; }
         public uint? EvolutionLevel { get; private set; }
+        public uint Killed { get; set; }
 
-        public Statistic(string name,string description,Type type,uint hp, uint attack, uint defense, uint speed, uint specialAttack, uint specialDefense,Statistic? evolution,uint? evolutionLevel)
+        public Statistic(string name,string description,Type type,uint hp, uint attack, uint defense, uint speed, uint specialAttack, uint specialDefense,Statistic? evolution,uint? evolutionLevel, uint killed = 0)
         {
             Name = name;
             Description = description;
@@ -409,6 +419,7 @@ namespace MonsterGameConcept
             SpecialDefense = specialDefense;
             Evolution = evolution;
             EvolutionLevel = evolutionLevel;
+            Killed = killed;
         }
     }
 
