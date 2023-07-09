@@ -74,7 +74,7 @@ namespace MonsterGameConcept
 
                 foreach (var item in items)
                 {
-                    if (requiredItems.ContainsKey(item.Key))
+                    if (requiredItems.ContainsKey(item.Key) && item.Value.Purpose == Item.ItemPurpose.Quest)
                     {
                         if (requiredItems[item.Key].Quantity > item.Value.Quantity)
                         {
@@ -117,7 +117,7 @@ namespace MonsterGameConcept
         {
             if (questStatus == QuestStatus.Started)
             {
-                if (requiredItems.ContainsValue(item))
+                if (requiredItems.ContainsValue(item) && item.Purpose == Item.ItemPurpose.Quest)
                 {
                     if (items[item.Name].Quantity > item.Quantity)
                     {
@@ -152,7 +152,7 @@ namespace MonsterGameConcept
         
         public void CheckQuest()
         {
-            if (requiredMonsters.Count == 0 && requiredItems.Count == 0)
+            if ((requiredMonsters.Count == 0 || requiredMonsters == null) && (requiredItems.Count == 0 || requiredItems == null))
             {
                 questStatus = QuestStatus.Ready;
             }

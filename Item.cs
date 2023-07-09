@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,20 +15,28 @@ namespace MonsterGameConcept
         public StatusCondition Status { get; private set; }
         public int Healing { get; private set; }
         public int Damage { get; private set; }
-        public bool QuestItem;
+        public ItemPurpose Purpose { get; private set; }
         public Move? move;
         public uint CatchChance;
 
-        public Item(string name, uint quantity = 0, bool quest = false, StatusCondition status = StatusCondition.Empty, int healing = 0, int damage = 0, Move? m = null, uint catchChance = 0)
+        public Item(string name, uint quantity = 0, ItemPurpose p = ItemPurpose.Normal, StatusCondition status = StatusCondition.Empty, int healing = 0, int damage = 0, Move? m = null, uint catchChance = 0)
         {
             Name = name;
             Quantity = quantity;
-            QuestItem = quest;
+            Purpose = p;
             Status = status;
             Healing = healing;
             Damage = damage;
             move = m;
             CatchChance = catchChance;
+        }
+
+        public enum ItemPurpose
+        {
+            Normal,
+            Quest,
+            Tool,
+            Cooking
         }
     }
 
@@ -50,6 +59,10 @@ namespace MonsterGameConcept
         {
             if (items.ContainsKey(itemName))
             {
+                if (items[itemName].Purpose == Item.ItemPurpose.Tool)
+                {
+                    items[itemName].Quantity = quantity;
+                }
                 items[itemName].Quantity += quantity;
             }
             else
@@ -77,7 +90,7 @@ namespace MonsterGameConcept
             }
         }
 
-        public void UseItem(string itemName,ref Monster mon)
+        public void UseItem(string itemName,ref Monster? mon)
         {
             if (!items.ContainsKey(itemName))
             {
@@ -89,34 +102,96 @@ namespace MonsterGameConcept
                 //Cant use item, have none in backpack
                 return;
             }
-            else if (items[itemName].QuestItem) {
+            else if (items[itemName].Purpose == Item.ItemPurpose.Quest) {
                 //Cant use item, its for quests
                 return;
             }
             else
             {
-                if (items[itemName].Healing > 0)
+                if (mon != null)
                 {
-                    mon.Heal(items[itemName].Healing);
+                    if (items[itemName].Healing > 0)
+                    {
+                        mon.Heal(items[itemName].Healing);
+                    }
+                    if (items[itemName].Damage > 0)
+                    {
+                        mon.TakeDamage(items[itemName].Damage);
+                    }
+                    if (items[itemName].Status == mon.Status)
+                    {
+                        mon.Status = StatusCondition.Empty;
+                    }
+                    if (items[itemName].move != null)
+                    {
+                        if (mon.Moves.Contains(items[itemName].move))
+                        {
+                            //Monster already knows item, can't learn it again
+                        }
+                        else
+                        {
+                            mon.Moves.Add(items[itemName].move);
+                        }
+                        
+                    }
+                    if (items[itemName].CatchChance != 0)
+                    {
+                        MainPage.TryCatch(ref mon, items[itemName]);
+                        //TODO:???????????? Test this stuff, it really smells
+                    }
                 }
-                if (items[itemName].Damage > 0)
+                else
                 {
-                    mon.TakeDamage(items[itemName].Damage);
+                    CheckHit(items[itemName]);
                 }
-                if (items[itemName].Status == mon.Status)
+                RemoveItem(items[itemName].Name); //For non-use items (Pickaxe, Fishing rod etc) the quantity will serve as durability
+            }
+        }
+
+        public static void CheckHit(Item item)
+        {
+            //TODO: Make it so you set the item "in-hand" via menu and when you press ctrl it tries to use that item
+            if (item.Purpose == Item.ItemPurpose.Tool)
+            {
+                if (item.Name.Contains("Pickaxe", StringComparison.OrdinalIgnoreCase))
                 {
-                    mon.Status = StatusCondition.Empty;
+                    //TODO: Add this to update
+                    //Destroyes the Rock, in Update();
+                    //RaycastHit hit;
+                    //if (Physics.Raycast(transform.position, transform.forward, out hit))
+                    //{
+                    //    if (hit.collider.CompareTag("Rock"))
+                    //    {
+                    //        Destroy(hit.collider.gameObject);
+                    //    }
+                    //}
+                    //Plays animation
+                    //pickaxeAnimator.SetTrigger("Use"); // Play the "Use" animation
+
                 }
-                if (items[itemName].move != null)
+                else if (item.Name.Contains("Fishing rod", StringComparison.OrdinalIgnoreCase))
                 {
-                    mon.Moves.Add(items[itemName].move);
+                    //Idea: You cant move while fishing, after 3 seconds you press CTRL again to fishout item, all avaible fishing items will be in a small list and you will get random 1 item.
+                    //Idea: Small % (like 5) to trigger a fight
+                    //Idea: Fishes as usable items
                 }
-                if (items[itemName].CatchChance != 0)
-                {
-                    MainPage.TryCatch(ref mon, items[itemName]);
-                    //TODO:???????????? Make it so you can use it on your own pokemon??
-                }
-                RemoveItem(items[itemName].Name);
+            }
+
+            
+        }
+
+        public void Cook(Item item)
+        {
+            if (item.Purpose == Item.ItemPurpose.Cooking)
+            {
+                string tmp = item.Name.Replace("Raw","Cooked");
+                MainPage.inv.RemoveItem(item.Name);
+                MainPage.inv.AddItem(tmp);
+                //Cooked the item
+            }
+            else
+            {
+                //Cant cook the item
             }
         }
 
@@ -137,6 +212,9 @@ namespace MonsterGameConcept
                 Console.WriteLine($"{item.Key}: {item.Value.Quantity}");
             }
         }
+
+        
+
 
 
         //Can it even be in this class?
